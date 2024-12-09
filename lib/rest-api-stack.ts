@@ -158,7 +158,36 @@ export class RestAPIStack extends cdk.Stack {
       new apig.LambdaIntegration(deleteMovieByIdFn, { proxy: true })
     );
 
+    // Added Q2 Part A here
+
+const getAwardsByMovieFn = new lambdanode.NodejsFunction(
+  this,
+  "GetAwardsByMovieFn",
+  {
+    architecture: lambda.Architecture.ARM_64,
+    runtime: lambda.Runtime.NODEJS_18_X,
+    entry: `${__dirname}/../lambdas/getAwardsByMovie.ts`,
+    timeout: cdk.Duration.seconds(10),
+    memorySize: 128,
+    environment: {
+      TABLE_NAME: movieAwardsTable.tableName,
+      REGION: "eu-west-1",
+    },
+  }
+);
+
+const awardsEndpoint = api.root.addResource("awards");
+const awardBodyEndpoint = awardsEndpoint.addResource("{awardBody}");
+const awardMoviesEndpoint = awardBodyEndpoint.addResource("movies");
+const awardMovieIdEndpoint = awardMoviesEndpoint.addResource("{movieId}");
+
+awardMovieIdEndpoint.addMethod(
+  "GET",
+  new apig.LambdaIntegration(getAwardsByMovieFn, { proxy: true })
+);
+
     // Permissions;
+    movieAwardsTable.grantReadData(getAwardsByMovieFn);
     moviesTable.grantReadData(getMovieByIdFn);
     moviesTable.grantReadWriteData(deleteMovieByIdFn);
     movieCastsTable.grantReadData(getMovieCastMembersFn);
