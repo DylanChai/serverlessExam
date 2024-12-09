@@ -1,3 +1,4 @@
+// Amended Q2 
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
@@ -24,6 +25,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
       };
     }
 
+    const queryStringParams = event.queryStringParameters;
+    const minAwards = queryStringParams?.min
+      ? parseInt(queryStringParams.min)
+      : undefined;
+
     const commandOutput = await ddbDocClient.send(
       new QueryCommand({
         TableName: process.env.TABLE_NAME,
@@ -45,12 +51,25 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
       };
     }
 
+    const awardDetails = commandOutput.Items[0];
+    const numAwards = awardDetails.numAwards;
+
+    if (minAwards !== undefined && numAwards <= minAwards) {
+      return {
+        statusCode: 400,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ Message: "Request failed" }),
+      };
+    }
+
     return {
       statusCode: 200,
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({ data: commandOutput.Items }),
+      body: JSON.stringify({ data: awardDetails }),
     };
   } catch (error: any) {
     console.log(JSON.stringify(error));
